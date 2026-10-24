@@ -16,19 +16,24 @@ func main() {
 		Handler: mux,
 	}
 
-	// srv.Protocols = new(http.Protocols)
-	// srv.Protocols.SetHTTP1(true)
-	// srv.ReadTimeout = 10 * time.Second
-	// srv.WriteTimeout = 10 * time.Second
-	// srv.Handler = mux
-
-	// fmt.Printf("Mux info: %+v\n", &mux)
-	// fmt.Printf("Srv info: %+v\n", &srv)
+	fmt.Printf("Mux info: %+v\n", &mux)
+	fmt.Printf("Srv info: %+v\n", &srv)
 	root := http.Dir(".")
 
-	fsrv := http.FileServer(root)
+	var f func(http.ResponseWriter, *http.Request)
 
-	mux.Handle("/", fsrv)
+	f = func(w http.ResponseWriter, req *http.Request) {
+		text := "OK"
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.Header().Add("Scooter", "theComputer")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(text))
+		fmt.Printf("w: %+v\n", w)
+	}
+
+	fsrv := http.FileServer(root)
+	mux.Handle("/app/", http.StripPrefix("/app", fsrv))
+	mux.HandleFunc("/healthz", f)
 
 	fmt.Println("\nServer running.")
 	log.Fatal(srv.ListenAndServe())
