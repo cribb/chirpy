@@ -45,9 +45,9 @@ func main() {
 	fsrv := http.FileServer(root)
 	// mux.Handle("/app/", http.StripPrefix("/app", fsrv))
 	mux.Handle("/app/", apicfg.middlewareMetricsInc(http.StripPrefix("/app", fsrv)))
-	mux.HandleFunc("GET /healthz", f)
-	mux.HandleFunc("GET /metrics", apicfg.getHits)
-	mux.HandleFunc("POST /reset", apicfg.zeroHits)
+	mux.HandleFunc("GET /api/healthz", f)
+	mux.HandleFunc("GET /admin/metrics", apicfg.getHits)
+	mux.HandleFunc("POST /admin/reset", apicfg.zeroHits)
 	// mux.Handle("/app/", middlewareLog(handler))
 
 	fmt.Println("\nServer running.")
@@ -65,8 +65,17 @@ func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
 }
 
 func (cfg *apiConfig) getHits(w http.ResponseWriter, req *http.Request) {
-	text := fmt.Sprintf("Hits: %v\n", cfg.fileserverHits.Load())
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	text := fmt.Sprintf(
+		`<html> 
+		<body>
+			<h1>Welcome, Chirpy Admin</h1>
+			<p>Chirpy has been visited %d times!</p>
+		</body>
+		</html>`,
+		cfg.fileserverHits.Load())
+
+	// text := fmt.Sprintf("Hits: %v\n", cfg.fileserverHits.Load())
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(text))
 }
