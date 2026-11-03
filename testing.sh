@@ -1,6 +1,10 @@
 # Curl tests for chirpy server
 
-URL="http://localhost:8080/api/validate_chirp"
+BASEURL="http://localhost:8080/"
+
+
+POSTURL=$BASEURL"api/validate_chirp"
+
 POST_TESTS=(
 # Empty body
 '{"body":""}' 
@@ -17,7 +21,30 @@ POST_TESTS=(
 # iterate through all of the elements of the POST_TESTS array
 for item in "${POST_TESTS[@]}"; do
     echo -e "\n"
-    echo "#### New TEST ####"
-    curl -v -X POST -H "Content-Type: application/json" -d "$item" "$URL"
+    echo "#### New POST Test ####"
+    curl -v -X POST -H "Content-Type: application/json" -d "$item" "$POSTURL"
 done
 echo -e "\n"
+
+# MUST reset before adding users in upcoming stanza
+RESET_URL=$BASEURL"admin/reset"
+echo -e "\n"
+echo "#### Reset server Test ####"
+curl -v -X POST -H "Content-Type: application/json" "$RESET_URL"
+
+USER_URL=$BASEURL"api/users"
+USER_TESTS=(
+# Create the first user
+'{"email":"mloneusk@example.co"}'
+# Create the second user
+'{"email":"dackjorsey@example.co"}'
+)
+
+# iterate through all of the elements of the USER_TESTS array
+for item in "${USER_TESTS[@]}"; do
+    echo -e "\n"
+    echo "#### New USER Test ####"
+    curl -v -X POST -H "Content-Type: application/json" -d "$item" "$USER_URL"
+done
+echo -e "\n"
+
