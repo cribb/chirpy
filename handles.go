@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cribb/chirpy/internal/database"
 	"github.com/google/uuid"
 )
 
@@ -18,11 +19,12 @@ type User struct {
 	Email     string    `json:"email"`
 }
 
-func handleOK(w http.ResponseWriter, req *http.Request) {
-	text := "OK"
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(text))
+type Chirp struct {
+	ID        uuid.UUID `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	UserID    uuid.UUID `json:"user_id"`
+	Body      string    `json:"body"`
 }
 
 func (cfg *apiConfig) addUser(w http.ResponseWriter, req *http.Request) {
@@ -60,16 +62,27 @@ func (cfg *apiConfig) addUser(w http.ResponseWriter, req *http.Request) {
 
 }
 
-func validateChirp(w http.ResponseWriter, req *http.Request) {
+func handleOK(w http.ResponseWriter, req *http.Request) {
+	text := "OK"
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(text))
+}
+
+func (cfg *apiConfig) handleChirp(w http.ResponseWriter, req *http.Request) {
 	type parameters struct {
-		Body string `json:"body"`
+		Body   string    `json:"body"`
+		UserID uuid.UUID `json:"user_id"`
 	}
 
 	decoder := json.NewDecoder(req.Body)
 	params := parameters{}
 	err := decoder.Decode(&params)
 	if err != nil {
-		log.Printf("Error marshalling JSON: %s", err)
+		fmt.Printf("params: %v\n", params)
+		// fmt.Printf("req.Body: %v\n", req.Body)
+		// fmt.Printf("decoder: %v\n", decoder)
+		log.Printf("Error decoding JSON: %s", err)
 		w.WriteHeader(500)
 		return
 	}
@@ -79,9 +92,56 @@ func validateChirp(w http.ResponseWriter, req *http.Request) {
 		respondWithError(w, 400, "Chirp is too long")
 		return
 	}
-	respondWithCleanVersion(w, 200, params.Body)
+
+	chirp_params := database.CreateChirpParams{
+		UserID: params.UserID,
+		Body:   badWordsBeGone(params.Body),
+	}
+
+	fmt.Printf("chirp_params: %v\n", chirp_params)
+
+	res, err := cfg.dbQueries.CreateChirp(req.Context(), chirp_params)
+	if err != nil {
+		respondWithError(w, 400, "Error creating chirp.")
+		return
+	}
+
+	newChirp := Chirp{
+		ID:        res.ID,
+		UserID:    res.UserID,
+		CreatedAt: res.CreatedAt,
+		UpdatedAt: res.UpdatedAt,
+		Body:      res.Body,
+	}
+
+	fmt.Printf("chirp: %+v\n", res)
+
+	respondWithJSON(w, 201, newChirp)
 
 }
+
+// func validateChirp(w http.ResponseWriter, req *http.Request) {
+// 	type parameters struct {
+// 		Body string `json:"body"`
+// 	}
+
+// 	decoder := json.NewDecoder(req.Body)
+// 	params := parameters{}
+// 	err := decoder.Decode(&params)
+// 	if err != nil {
+// 		log.Printf("Error marshalling JSON: %s", err)
+// 		w.WriteHeader(500)
+// 		return
+// 	}
+// 	// fmt.Printf("decoder: %v, params: %v", decoder, params.Body)
+
+// 	if len(params.Body) > 140 {
+// 		respondWithError(w, 400, "Chirp is too long")
+// 		return
+// 	}
+// 	respondWithCleanVersion(w, 200, params.Body)
+
+// }
 
 // func respondWithSuccess(w http.ResponseWriter, code int) {
 // 	type validResponse struct {
@@ -97,14 +157,14 @@ func respondWithError(w http.ResponseWriter, code int, msg string) {
 	respondWithJSON(w, code, errorResponse{Error: msg})
 }
 
-func respondWithCleanVersion(w http.ResponseWriter, code int, msg string) {
-	type cleanResponse struct {
-		CleanedBody string `json:"cleaned_body"`
-	}
-	cmsg := badWordsBeGone(msg)
-	respondWithJSON(w, code, cleanResponse{CleanedBody: cmsg})
+// func respondWithCleanVersion(w http.ResponseWriter, code int, msg string) {
+// 	type cleanResponse struct {
+// 		CleanedBody string `json:"cleaned_body"`
+// 	}
+// 	cmsg := badWordsBeGone(msg)
+// 	respondWithJSON(w, code, cleanResponse{CleanedBody: cmsg})
 
-}
+// }
 
 func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
 	dat, err := json.Marshal(payload)
@@ -164,7 +224,11 @@ func (cfg *apiConfig) resetAPI(w http.ResponseWriter, req *http.Request) {
 	}
 
 	cfg.fileserverHits.Store(0)
-	cfg.dbQueries.ResetUsers(req.Context())
+	err := cfg.dbQueries.ResetUsers(req.Context())
+	if err != nil {
+		fmt.Printf("Error on User reset: %v", err)
+		return
+	}
 	text := fmt.Sprintf("Reset hits to: %v\n", cfg.fileserverHits.Load())
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(http.StatusOK)

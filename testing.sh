@@ -48,3 +48,29 @@ for item in "${USER_TESTS[@]}"; do
 done
 echo -e "\n"
 
+# testing the ability to chirp
+echo "#### New Test: CHIRP ####"
+echo "  #### Reset database"
+url="http://localhost:8080/admin/reset"
+curl -v -X POST -H "Content-Type: application/json" "$url"
+echo -e "\n"
+
+echo "  #### Create Saul's account"
+item='{"email":"saul@bettercall.com"}'
+url="http://localhost:8080/api/users"
+response=$(curl -v -sS -X POST -H "Content-Type: application/json" -d "$item" "$url")
+echo "Response:"
+echo $response
+userID01=$(printf '%s' "$response" | jq -r '.id')
+echo "userID:"
+echo $userID01
+echo -e "\n"
+
+echo "  #### Create a chirp with author ID"
+item="{\"body\":\"If you're committed enough, you can make any story work.\",\"user_id\":\"${userID01}\"}"
+echo "Item:"
+echo $item
+url="http://localhost:8080/api/chirps"
+curl -v -X POST -H "Content-Type: application/json" -d "$item" "$url"
+echo -e "\n"
+
