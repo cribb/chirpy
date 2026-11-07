@@ -41,6 +41,106 @@ func (q *Queries) CreateChirp(ctx context.Context, arg CreateChirpParams) (Chirp
 	return i, err
 }
 
+const getAllChirps = `-- name: GetAllChirps :many
+SELECT chirps.id, chirps.created_at, chirps.updated_at, chirps.user_id, chirps.body
+FROM chirps 
+ORDER BY created_at ASC
+`
+
+func (q *Queries) GetAllChirps(ctx context.Context) ([]Chirp, error) {
+	rows, err := q.db.QueryContext(ctx, getAllChirps)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Chirp
+	for rows.Next() {
+		var i Chirp
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.UserID,
+			&i.Body,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getChirp = `-- name: GetChirp :one
+SELECT chirps.id, chirps.created_at, chirps.updated_at, chirps.user_id, chirps.body
+FROM chirps 
+INNER JOIN users
+  on chirps.user_id = users.id
+WHERE chirps.id = $1
+LIMIT 1
+`
+
+func (q *Queries) GetChirp(ctx context.Context, id uuid.UUID) (Chirp, error) {
+	row := q.db.QueryRowContext(ctx, getChirp, id)
+	var i Chirp
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.UserID,
+		&i.Body,
+	)
+	return i, err
+}
+
+const getChirpsForUser = `-- name: GetChirpsForUser :many
+SELECT chirps.id, chirps.created_at, chirps.updated_at, chirps.user_id, chirps.body
+FROM chirps
+INNER JOIN users
+  ON chirps.user_id = users.id
+WHERE users.id = $1
+LIMIT $2
+`
+
+type GetChirpsForUserParams struct {
+	ID    uuid.UUID
+	Limit int32
+}
+
+func (q *Queries) GetChirpsForUser(ctx context.Context, arg GetChirpsForUserParams) ([]Chirp, error) {
+	rows, err := q.db.QueryContext(ctx, getChirpsForUser, arg.ID, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Chirp
+	for rows.Next() {
+		var i Chirp
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.UserID,
+			&i.Body,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const resetChirps = `-- name: ResetChirps :exec
 TRUNCATE TABLE chirps
 `

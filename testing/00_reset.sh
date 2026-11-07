@@ -5,7 +5,7 @@ BASEURL="http://localhost:8080/"
 # Reset database
 echo -e "\n"
 echo "#### Reset database"
-curl -v -X POST -H "Content-Type: application/json" "http://localhost:8080/admin/reset"
+curl -X POST -H "Content-Type: application/json" "http://localhost:8080/admin/reset"
 
 
 

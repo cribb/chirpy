@@ -13,11 +13,24 @@ RETURNING *;
 TRUNCATE TABLE chirps;
 
 
--- -- GetChirpsForUser :many
--- SELECT chirps.*
--- FROM chirps
--- INNER JOIN users
---   ON posts.user_id = users.id
--- WHERE user_id = $1
--- LIMIT $2;
+-- name: GetAllChirps :many
+SELECT chirps.*
+FROM chirps 
+ORDER BY created_at ASC;
+
+-- name: GetChirp :one
+SELECT chirps.*
+FROM chirps 
+INNER JOIN users
+  on chirps.user_id = users.id
+WHERE chirps.id = $1
+LIMIT 1;
+
+-- name: GetChirpsForUser :many
+SELECT chirps.*
+FROM chirps
+INNER JOIN users
+  ON chirps.user_id = users.id
+WHERE users.id = $1
+LIMIT $2;
 
