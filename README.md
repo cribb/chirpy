@@ -38,5 +38,4 @@ kill %1        # literal example
 	github.com/lib/pq v1.12.3 
 	golang.org/x/crypto v0.14.0
 	golang.org/x/sys v0.13.0
-
-
+	github.com/golang-jwt/jwt/v5
