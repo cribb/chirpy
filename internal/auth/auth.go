@@ -2,6 +2,8 @@ package auth
 
 import (
 	"fmt"
+	"net/http"
+	"strings"
 	"time"
 
 	"github.com/alexedwards/argon2id"
@@ -75,4 +77,21 @@ func ValidateJWT(tokenString, tokenSecret string) (uuid.UUID, error) {
 		return uuid.Nil, err
 	}
 	return userUUID, nil
+}
+
+func GetBearerToken(headers http.Header) (string, error) {
+
+	auth := headers.Get("Authorization")
+	if !strings.HasPrefix(auth, "Bearer ") {
+		return "", fmt.Errorf("Error: Bearer token is empty or malformed.\n")
+	}
+
+	auth = strings.TrimPrefix(auth, "Bearer ")
+	auth = strings.TrimSpace(auth)
+
+	if len(auth) == 0 {
+		return "", fmt.Errorf("bearer token is empty")
+	}
+	// fmt.Printf("auth-string: %v\n", auth)
+	return auth, nil
 }

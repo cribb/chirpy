@@ -4,6 +4,7 @@ package auth
 
 import (
 	"fmt"
+	"net/http"
 	"testing"
 	"time"
 
@@ -49,4 +50,24 @@ func TestJWT(t *testing.T) {
 	if testUUID != authenticatedUUID {
 		t.Errorf("authenication process for UUID has failed.")
 	}
+}
+
+func TestGetBearerToken(t *testing.T) {
+
+	token := "SecretsAndLies"
+
+	h := http.Header{}
+	_, err := GetBearerToken(h)
+	if err == nil {
+		t.Errorf("Test for empty header failed")
+	}
+
+	h.Set("Authorization", "Bearer "+token)
+	testToken, err := GetBearerToken(h)
+	if err != nil || testToken != token {
+		fmt.Printf("Something weird happened with the Bearer token. (%v)\n", err)
+		fmt.Printf("token: %v, testToken: %v \n", token, testToken)
+		t.Fatalf("Bearer token test failed.")
+	}
+
 }

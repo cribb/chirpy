@@ -39,3 +39,9 @@ kill %1        # literal example
 	golang.org/x/crypto v0.14.0
 	golang.org/x/sys v0.13.0
 	github.com/golang-jwt/jwt/v5
+
+### Authentication Token generation (do not keep tokens in github)
+
+#### generate new token (bash)
+
+    openssl rand -base64 64

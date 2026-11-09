@@ -18,6 +18,7 @@ type apiConfig struct {
 	fileserverHits atomic.Int32
 	dbURL          string
 	dbQueries      *database.Queries
+	jwtSecret      string
 }
 
 func main() {
@@ -31,6 +32,7 @@ func main() {
 	godotenv.Load()
 	apicfg.dbURL = os.Getenv("DB_URL")
 	apicfg.platform = os.Getenv("PLATFORM")
+	apicfg.jwtSecret = os.Getenv("JWTSECRET")
 
 	fmt.Printf("platform: %v\n", apicfg.platform)
 	fmt.Printf("Database URL: %v\n", apicfg.dbURL)

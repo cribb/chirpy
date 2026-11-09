@@ -18,6 +18,7 @@ type User struct {
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 	Email     string    `json:"email"`
+	Token     string    `json:"token"`
 }
 
 type Chirp struct {
@@ -38,16 +39,14 @@ func (cfg *apiConfig) addUser(w http.ResponseWriter, req *http.Request) {
 	params := parameters{}
 	err := decoder.Decode(&params)
 	if err != nil {
-		log.Printf("Error decoding JSON: %s", err)
-		w.WriteHeader(500)
+		respondWithError(w, 500, fmt.Sprintf("Error decoding JSON: %s", err))
 		return
 	}
 
 	email := params.Email
 	hashed_pword, err := auth.HashPassword(params.Password)
 	if err != nil {
-		fmt.Printf("Error generating hash.\n")
-		w.WriteHeader(401)
+		respondWithError(w, 401, "Error generating hash.")
 		return
 	}
 
@@ -58,8 +57,7 @@ func (cfg *apiConfig) addUser(w http.ResponseWriter, req *http.Request) {
 
 	user, err := cfg.dbQueries.CreateUser(req.Context(), user_params)
 	if err != nil {
-		log.Printf("Error creating user: %s", err)
-		w.WriteHeader(502)
+		respondWithError(w, 500, fmt.Sprintf("Error creating user: %s", err))
 		return
 	}
 
@@ -76,18 +74,25 @@ func (cfg *apiConfig) addUser(w http.ResponseWriter, req *http.Request) {
 }
 
 func (cfg *apiConfig) handleUserLogin(w http.ResponseWriter, req *http.Request) {
+
+	maxExpirationTime := 3600 // seconds
+
 	type parameters struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
+		Email            string `json:"email"`
+		Password         string `json:"password"`
+		ExpiresInSeconds int    `json:"expires_in_seconds"`
 	}
 
 	decoder := json.NewDecoder(req.Body)
 	params := parameters{}
 	err := decoder.Decode(&params)
 	if err != nil {
-		log.Printf("Error decoding JSON: %s", err)
-		w.WriteHeader(500)
+		respondWithError(w, 500, fmt.Sprintf("Error decoding JSON: %s", err))
 		return
+	}
+
+	if params.ExpiresInSeconds <= 0 || params.ExpiresInSeconds > maxExpirationTime {
+		params.ExpiresInSeconds = maxExpirationTime
 	}
 
 	user, err := cfg.dbQueries.GetUserByEmail(req.Context(), params.Email)
@@ -110,14 +115,22 @@ func (cfg *apiConfig) handleUserLogin(w http.ResponseWriter, req *http.Request) 
 		return
 	}
 
+	expiry := time.Duration(params.ExpiresInSeconds) * time.Second
+	token, err := auth.MakeJWT(user.ID, cfg.jwtSecret, expiry)
+	if err != nil {
+		respondWithError(w, 500, "Bad Token/Secret.")
+		return
+	}
+
 	loginUser := User{
 		ID:        user.ID,
 		CreatedAt: user.CreatedAt,
 		UpdatedAt: user.UpdatedAt,
 		Email:     user.Email,
+		Token:     token,
 	}
 
-	fmt.Printf("loginUser: %+v\n", loginUser)
+	// fmt.Printf("loginUser: %+v\n", loginUser)
 
 	respondWithJSON(w, 200, loginUser)
 }
@@ -142,11 +155,22 @@ func (cfg *apiConfig) handlePostChirp(w http.ResponseWriter, req *http.Request) 
 		// fmt.Printf("params: %v\n", params)
 		// fmt.Printf("req.Body: %v\n", req.Body)
 		// fmt.Printf("decoder: %v\n", decoder)
-		log.Printf("Error decoding JSON: %s", err)
-		w.WriteHeader(500)
+		respondWithError(w, 500, fmt.Sprintf("Error decoding JSON: %s", err))
 		return
 	}
 	// fmt.Printf("decoder: %v, params: %v", decoder, params.Body)
+
+	tokenString, err := auth.GetBearerToken(req.Header)
+	if err != nil {
+		respondWithError(w, 401, "Bad token.")
+		return
+	}
+
+	userID, err := auth.ValidateJWT(tokenString, cfg.jwtSecret)
+	if err != nil {
+		respondWithError(w, 401, "Invalid UUID")
+		return
+	}
 
 	if len(params.Body) > 140 {
 		respondWithError(w, 400, "Chirp is too long")
@@ -154,7 +178,7 @@ func (cfg *apiConfig) handlePostChirp(w http.ResponseWriter, req *http.Request) 
 	}
 
 	chirp_params := database.CreateChirpParams{
-		UserID: params.UserID,
+		UserID: userID,
 		Body:   badWordsBeGone(params.Body),
 	}
 
