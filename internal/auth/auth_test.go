@@ -71,3 +71,13 @@ func TestGetBearerToken(t *testing.T) {
 	}
 
 }
+
+func TestMakeRefreshToken(t *testing.T) {
+	// stupid test just to see if the keygen is working
+	Nbytes := 32 // must be even
+	tokHexString := MakeRefreshToken(Nbytes)
+
+	if Nbytes != len(tokHexString)/2 {
+		t.Errorf("Test for HexString byte-length failed. (%v)", tokHexString)
+	}
+}

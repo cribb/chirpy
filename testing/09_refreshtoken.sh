@@ -5,8 +5,8 @@ BASEURL="http://localhost:8080/"
 # Reset database before performing tests 
 ./00_reset.sh
 
-# testing the ability to return (GET) ALL of the chirps
-echo "#### New Test: GET CHIRPS ####"
+# testing the refresh tokens
+echo "#### New Test: REFRESH TOKENS ####"
 
 
 # create Saul's accound with passwords
@@ -21,17 +21,18 @@ echo -e "  Created Saul's account, got back as UUID: ${userID01}\n"
 # Get Saul's access and refresh token
 echo "  ## Get Saul's access and refresh token"
 loginResponseSaul=$(curl -H "Content-Type: application/json" -d "$item01" "${BASEURL}api/login")
-tokenSaul=$(printf '%s' "$loginResponseSaul" | jq -r '.token')
+jwtokenSaul=$(printf '%s' "$loginResponseSaul" | jq -r '.token')
+rtokenSaul=$(printf '%s' "$loginResponseSaul" | jq -r '.refresh_token')
 echo -e "\n"
 
 # Reject refresh token used to create chirp
 echo "  #### Reject refresh token used to create chirp"
 chirpSaul="{\"body\":\"Let's just say I know a guy... who knows a guy... who knows another guy.\"}"
-curl -H "Content-Type: application/json" -H "Authorization: Bearer ${tokenSaul}" -d "$chirpSaul" "${BASEURL}api/chirps"
+curl -H "Content-Type: application/json" -H "Authorization: Bearer ${rtokenSaul}" -d "$chirpSaul" "${BASEURL}api/chirps"
 echo -e "\n"
 
 # Create chirp with the access token
 echo "  #### Create chirp with the access token"
 chirpSaul="{\"body\":\"Let's just say I know a guy... who knows a guy... who knows another guy.\"}"
-curl -H "Content-Type: application/json" -H "Authorization: Bearer ${tokenSaul}" -d "$chirpSaul" "${BASEURL}api/chirps"
+curl -H "Content-Type: application/json" -H "Authorization: Bearer ${jwtokenSaul}" -d "$chirpSaul" "${BASEURL}api/chirps"
 echo -e "\n"

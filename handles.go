@@ -14,11 +14,12 @@ import (
 )
 
 type User struct {
-	ID        uuid.UUID `json:"id"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-	Email     string    `json:"email"`
-	Token     string    `json:"token"`
+	ID           uuid.UUID `json:"id"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
+	Email        string    `json:"email"`
+	Token        string    `json:"token"`
+	RefreshToken string    `json:"refresh_token"`
 }
 
 type Chirp struct {
@@ -29,7 +30,7 @@ type Chirp struct {
 	Body      string    `json:"body"`
 }
 
-func (cfg *apiConfig) addUser(w http.ResponseWriter, req *http.Request) {
+func (cfg *apiConfig) handleAddUser(w http.ResponseWriter, req *http.Request) {
 	type parameters struct {
 		Email    string `json:"email"`
 		Password string `json:"password"`
@@ -75,12 +76,9 @@ func (cfg *apiConfig) addUser(w http.ResponseWriter, req *http.Request) {
 
 func (cfg *apiConfig) handleUserLogin(w http.ResponseWriter, req *http.Request) {
 
-	maxExpirationTime := 3600 // seconds
-
 	type parameters struct {
-		Email            string `json:"email"`
-		Password         string `json:"password"`
-		ExpiresInSeconds int    `json:"expires_in_seconds"`
+		Email    string `json:"email"`
+		Password string `json:"password"`
 	}
 
 	decoder := json.NewDecoder(req.Body)
@@ -89,10 +87,6 @@ func (cfg *apiConfig) handleUserLogin(w http.ResponseWriter, req *http.Request) 
 	if err != nil {
 		respondWithError(w, 500, fmt.Sprintf("Error decoding JSON: %s", err))
 		return
-	}
-
-	if params.ExpiresInSeconds <= 0 || params.ExpiresInSeconds > maxExpirationTime {
-		params.ExpiresInSeconds = maxExpirationTime
 	}
 
 	user, err := cfg.dbQueries.GetUserByEmail(req.Context(), params.Email)
@@ -115,19 +109,34 @@ func (cfg *apiConfig) handleUserLogin(w http.ResponseWriter, req *http.Request) 
 		return
 	}
 
-	expiry := time.Duration(params.ExpiresInSeconds) * time.Second
-	token, err := auth.MakeJWT(user.ID, cfg.jwtSecret, expiry)
+	expiry := time.Hour
+	jwtToken, err := auth.MakeJWT(user.ID, cfg.jwtSecret, expiry)
 	if err != nil {
 		respondWithError(w, 500, "Bad Token/Secret.")
 		return
 	}
 
+	r_tok := auth.MakeRefreshToken(32)
+	r_tokNow := time.Now()
+	tokenParams := database.CreateRefreshTokenParams{
+		Token:     r_tok,
+		UserID:    user.ID,
+		CreatedAt: r_tokNow,
+		UpdatedAt: r_tokNow,
+		ExpiresAt: r_tokNow.Add(time.Hour * 24 * 60),
+	}
+	err = cfg.dbQueries.CreateRefreshToken(req.Context(), tokenParams)
+	if err != nil {
+		respondWithError(w, 501, "Refresh token not stored properly.")
+	}
+
 	loginUser := User{
-		ID:        user.ID,
-		CreatedAt: user.CreatedAt,
-		UpdatedAt: user.UpdatedAt,
-		Email:     user.Email,
-		Token:     token,
+		ID:           user.ID,
+		CreatedAt:    user.CreatedAt,
+		UpdatedAt:    user.UpdatedAt,
+		Email:        user.Email,
+		Token:        jwtToken,
+		RefreshToken: r_tok,
 	}
 
 	// fmt.Printf("loginUser: %+v\n", loginUser)
