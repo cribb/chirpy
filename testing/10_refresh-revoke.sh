@@ -18,7 +18,7 @@ echo -e "  Created Saul's account, got back as UUID: ${userID01}\n"
 
 # Get Saul's access and refresh token
 echo "  ## Get Saul's access and refresh token"
-loginResponseSaul=$(curl -H "Content-Type: application/json" -d "$item01" "${BASEURL}api/login")
+loginResponseSaul=$(curl -sS -H "Content-Type: application/json" -d "$item01" "${BASEURL}api/login")
 jwtokenSaul=$(printf '%s' "$loginResponseSaul" | jq -r '.token')
 rtokenSaul=$(printf '%s' "$loginResponseSaul" | jq -r '.refresh_token')
 echo -e "Saul's access token: $jwtokenSaul"
@@ -27,15 +27,20 @@ echo -e "\n"
 
 # Refresh Saul's access token
 echo "  #### Refresh Saul's access token"
-refreshResponseSaul=$(curl -H "Content-Type: application/json;Authorization: Bearer ${rtokenSaul}" -d "$item01" "${BASEURL}api/refresh")
-new_jwtokenSaul=$(printf '%s', "$refreshResponseSaul" | jq -r ".token")
-new_rtokenSaul=$(printf '%s', "$refreshResponseSaul" | jq -r ".refresh_token")
+refreshResponseSaul=$(curl -sS -H "Content-Type: application/json" -H "Authorization: Bearer ${rtokenSaul}" -d "$item01" "${BASEURL}api/refresh")
+printf '%s\n' "refreshResponseSaul: $refreshResponseSaul"
+new_jwtokenSaul=$(printf '%s' "$refreshResponseSaul" | jq -r ".token")
 echo -e "Saul's new access token: $new_jwtokenSaul"
-echo -e "Saul's new refresh token: $new_rtokenSaul"
+echo -e "\n"
 
-# Create chirp with the refreshed access token
-echo "  #### Create chirp with the access token"
-chirpSaul="{\"body\":\"I'm the guy who's gonna win you this case.\"}"
-curl -H "Content-Type: application/json;Authorization: Bearer ${new_rtokenSaul}" -d "$chirpSaul" "${BASEURL}api/chirps"
+# Reject a refresh token used to create a chirp
+echo "  #### Reject a refresh token used to create a chirp"
+chirpSaul="{\"body\": \"Let's just say I know a guy... who knows a guy... who knows another guy.\"}"
+curl -sS -H "Content-Type: application/json" -H "Authorization: Bearer ${rtokenSaul}" -d "$chirpSaul" "${BASEURL}api/chirps"
+echo -e "\n"
+
+# Create a chirp with the access token 
+echo "  #### Create a chirp with the access token"
+curl -sS -H "Content-Type: application/json" -H "Authorization: Bearer ${jwtokenSaul}" -d "$chirpSaul" "${BASEURL}api/chirps"
 echo -e "\n"
 

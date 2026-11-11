@@ -11,15 +11,22 @@ VALUES (
 RETURNING *;
 
 
--- name: GetRefreshTokenByUUID :one
-SELECT refresh_tokens.*
+-- name: GetUserbyRefreshToken :one
+SELECT users.*
 FROM refresh_tokens
-WHERE refresh_tokens.user_id = $1
+INNER JOIN users
+  ON refresh_tokens.user_id = users.id
+WHERE (refresh_tokens.token = $1
+  AND refresh_tokens.expires_at > NOW()
+  AND refresh_tokens.revoked_at IS NULL)
 LIMIT 1;
+
+-- name: RevokeRefreshToken :exec
+UPDATE refresh_tokens
+SET updated_at = NOW(), revoked_at = NOW()
+WHERE refresh_tokens.token = $1;
 
 
 -- name: ResetRefreshTokens :exec
 TRUNCATE refresh_tokens;
-
-
 

@@ -65,16 +65,18 @@ func main() {
 	// Register the list of endpoints for the server/api
 	mux.Handle("/app/", apicfg.middlewareMetricsInc(http.StripPrefix("/app", fsrv)))
 
-	mux.HandleFunc("GET /api/healthz", handleOK)
-	mux.HandleFunc("POST /api/validate_chirp", validateChirp)
 	mux.HandleFunc("GET /admin/metrics", apicfg.getHits)
+	mux.HandleFunc("GET /api/healthz", apicfg.handleOK)
+	mux.HandleFunc("GET /api/chirps", apicfg.handleGetAllChirps)
+	mux.HandleFunc("GET /api/chirps/{chirpID}", apicfg.handleGetChirp)
+
 	mux.HandleFunc("POST /admin/reset", apicfg.resetAPI)
+	mux.HandleFunc("POST /api/validate_chirp", apicfg.handleValidateChirp)
 	mux.HandleFunc("POST /api/users", apicfg.handleAddUser)
 	mux.HandleFunc("POST /api/chirps", apicfg.handlePostChirp)
-	mux.HandleFunc("GET /api/chirps", apicfg.handleGetAllChirps)
 	mux.HandleFunc("POST /api/login", apicfg.handleUserLogin)
-
-	mux.HandleFunc("GET /api/chirps/{chirpID}", apicfg.handleGetChirp)
+	mux.HandleFunc("POST /api/revoke", apicfg.handleRevoke)
+	mux.HandleFunc("POST /api/refresh", apicfg.handleRefresh)
 
 	fmt.Println("\nServer running.")
 	log.Fatal(srv.ListenAndServe())

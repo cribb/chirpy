@@ -48,7 +48,7 @@ func MakeJWT(userID uuid.UUID, tokenSecret string, expiresIn time.Duration) (str
 		fmt.Printf("Error occurred while signing token: %v\n", err)
 		return "", err
 	}
-	fmt.Printf("tokenString: %v\n", tokenString)
+	// fmt.Printf("tokenString: %v\n", tokenString)
 
 	return tokenString, nil
 }

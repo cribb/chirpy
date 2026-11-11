@@ -28,11 +28,12 @@ echo -e "\n"
 # Reject refresh token used to create chirp
 echo "  #### Reject refresh token used to create chirp"
 chirpSaul="{\"body\":\"Let's just say I know a guy... who knows a guy... who knows another guy.\"}"
-curl -H "Content-Type: application/json" -H "Authorization: Bearer ${rtokenSaul}" -d "$chirpSaul" "${BASEURL}api/chirps"
+curl -sS -H "Content-Type: application/json" -H "Authorization: Bearer ${rtokenSaul}" -d "$chirpSaul" "${BASEURL}api/chirps"
 echo -e "\n"
 
 # Create chirp with the access token
 echo "  #### Create chirp with the access token"
 chirpSaul="{\"body\":\"Let's just say I know a guy... who knows a guy... who knows another guy.\"}"
-curl -H "Content-Type: application/json" -H "Authorization: Bearer ${jwtokenSaul}" -d "$chirpSaul" "${BASEURL}api/chirps"
+curl -sS -H "Content-Type: application/json" -H "Authorization: Bearer ${jwtokenSaul}" -d "$chirpSaul" "${BASEURL}api/chirps"
 echo -e "\n"
+

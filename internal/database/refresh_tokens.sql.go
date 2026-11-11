@@ -44,23 +44,26 @@ func (q *Queries) CreateRefreshToken(ctx context.Context, arg CreateRefreshToken
 	return err
 }
 
-const getRefreshTokenByUUID = `-- name: GetRefreshTokenByUUID :one
-SELECT refresh_tokens.token, refresh_tokens.user_id, refresh_tokens.created_at, refresh_tokens.updated_at, refresh_tokens.expires_at, refresh_tokens.revoked_at
+const getUserbyRefreshToken = `-- name: GetUserbyRefreshToken :one
+SELECT users.id, users.created_at, users.updated_at, users.email, users.hashed_password
 FROM refresh_tokens
-WHERE refresh_tokens.user_id = $1
+INNER JOIN users
+  ON refresh_tokens.user_id = users.id
+WHERE (refresh_tokens.token = $1
+  AND refresh_tokens.expires_at > NOW()
+  AND refresh_tokens.revoked_at IS NULL)
 LIMIT 1
 `
 
-func (q *Queries) GetRefreshTokenByUUID(ctx context.Context, userID uuid.UUID) (RefreshToken, error) {
-	row := q.db.QueryRowContext(ctx, getRefreshTokenByUUID, userID)
-	var i RefreshToken
+func (q *Queries) GetUserbyRefreshToken(ctx context.Context, token string) (User, error) {
+	row := q.db.QueryRowContext(ctx, getUserbyRefreshToken, token)
+	var i User
 	err := row.Scan(
-		&i.Token,
-		&i.UserID,
+		&i.ID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.ExpiresAt,
-		&i.RevokedAt,
+		&i.Email,
+		&i.HashedPassword,
 	)
 	return i, err
 }
@@ -71,5 +74,16 @@ TRUNCATE refresh_tokens
 
 func (q *Queries) ResetRefreshTokens(ctx context.Context) error {
 	_, err := q.db.ExecContext(ctx, resetRefreshTokens)
+	return err
+}
+
+const revokeRefreshToken = `-- name: RevokeRefreshToken :exec
+UPDATE refresh_tokens
+SET updated_at = NOW(), revoked_at = NOW()
+WHERE refresh_tokens.token = $1
+`
+
+func (q *Queries) RevokeRefreshToken(ctx context.Context, token string) error {
+	_, err := q.db.ExecContext(ctx, revokeRefreshToken, token)
 	return err
 }
