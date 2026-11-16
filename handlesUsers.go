@@ -52,7 +52,7 @@ func (cfg *apiConfig) handleAddUser(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	fmt.Printf("user: %v\n", user)
+	// fmt.Printf("user: %v\n", user)
 	newUser := User{
 		ID:        user.ID,
 		CreatedAt: user.CreatedAt,
@@ -86,15 +86,9 @@ func (cfg *apiConfig) handleUserLogin(w http.ResponseWriter, req *http.Request) 
 		return
 	}
 
-	success, err := auth.CheckPasswordHash(params.Password, user.HashedPassword)
+	err = auth.CheckPasswordHash(params.Password, user.HashedPassword)
 	if err != nil {
 		fmt.Printf("Error with password check: (%v)\n", err)
-		respondWithError(w, 401, "Incorrect email or password")
-		return
-	}
-
-	if !success {
-		fmt.Printf("Error: Wrong password for user.\n")
 		respondWithError(w, 401, "Incorrect email or password")
 		return
 	}
@@ -145,6 +139,7 @@ func (cfg *apiConfig) handleRevoke(w http.ResponseWriter, req *http.Request) {
 		respondWithError(w, 401, "Bad token.")
 		return
 	}
+
 	fmt.Printf("btoken: %v\n", btoken)
 	err = cfg.dbQueries.RevokeRefreshToken(req.Context(), btoken)
 	if err != nil {
@@ -182,4 +177,79 @@ func (cfg *apiConfig) handleRefresh(w http.ResponseWriter, req *http.Request) {
 	}
 
 	respondWithJSON(w, 200, tokenResponse{Token: newToken})
+}
+
+func (cfg *apiConfig) handleUpdateUser(w http.ResponseWriter, req *http.Request) {
+
+	jwToken, err := auth.GetBearerToken(req.Header)
+	if err != nil {
+		// fmt.Printf("UpdateUser: Bad token. (%v)\n", err)
+		respondWithError(w, 401, "Bad token.")
+		return
+	}
+
+	type parameters struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+
+	decoder := json.NewDecoder(req.Body)
+	userNewParams := parameters{}
+	err = decoder.Decode(&userNewParams)
+	if err != nil {
+		respondWithError(w, 500, fmt.Sprintf("Error decoding JSON: %s", err))
+		return
+	}
+
+	uuid, err := auth.ValidateJWT(jwToken, cfg.jwtSecret)
+	if err != nil {
+		// fmt.Printf("UpdateUser: User not found. (%v)\n", err)
+		respondWithError(w, 401, "User not found.")
+		return
+	}
+	// fmt.Printf("UpdateUser: uuid: (%v)\n", uuid)
+
+	user, err := cfg.dbQueries.GetUserByUUID(req.Context(), uuid)
+	if err != nil {
+		fmt.Printf("UpdateUser: User not found. (%v)\n", err)
+		respondWithError(w, 500, "User not found.")
+		return
+	}
+
+	// fmt.Printf("UpdateUser: updating from old email: %v\n", user.Email)
+	// fmt.Printf("UpdateUser: updating  to  new email: %v\n", userNewParams.Email)
+	// fmt.Printf("UpdateUser: updating  to  new pword: %v\n", userNewParams.Password)
+
+	hash, err := auth.HashPassword(userNewParams.Password)
+	if err != nil {
+		respondWithError(w, 500, "Error hashing password.")
+		return
+	}
+
+	p := database.UpdateUserParams{
+		ID:             uuid,
+		Email:          userNewParams.Email,
+		HashedPassword: hash,
+	}
+
+	err = cfg.dbQueries.UpdateUser(req.Context(), p)
+	if err != nil {
+		respondWithError(w, 500, "Error updating user.")
+		return
+	}
+
+	userchk, err := cfg.dbQueries.GetUserByEmail(req.Context(), userNewParams.Email)
+	if err != nil {
+		respondWithError(w, 401, "Error retrieving new email for user.")
+		return
+	}
+
+	// fmt.Printf("Updated user's email to: %v\n", p.Email)
+	// fmt.Printf("Updated user's email to: %v\n", userchk.Email)
+
+	type userResponse struct {
+		Email string `json:"email"`
+	}
+
+	respondWithJSON(w, 200, userResponse{Email: userNewParams.Email})
 }

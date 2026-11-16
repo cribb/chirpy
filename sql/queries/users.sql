@@ -16,6 +16,17 @@ FROM users
 WHERE users.email = $1
 LIMIT 1;
 
+-- name: GetUserByUUID :one
+SELECT users.*
+FROM users 
+WHERE users.id = $1
+LIMIT 1;
+
+-- name: UpdateUser :exec
+UPDATE users
+SET email = $2, hashed_password = $3
+WHERE users.id = $1;
+
 
 -- name: ResetUsers :exec
 TRUNCATE users CASCADE;

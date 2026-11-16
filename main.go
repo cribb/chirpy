@@ -78,6 +78,8 @@ func main() {
 	mux.HandleFunc("POST /api/revoke", apicfg.handleRevoke)
 	mux.HandleFunc("POST /api/refresh", apicfg.handleRefresh)
 
+	mux.HandleFunc("PUT /api/users", apicfg.handleUpdateUser)
+
 	fmt.Println("\nServer running.")
 	log.Fatal(srv.ListenAndServe())
 

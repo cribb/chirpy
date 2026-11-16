@@ -21,12 +21,12 @@ func HashPassword(password string) (string, error) {
 	return hash, nil
 }
 
-func CheckPasswordHash(password string, hash string) (bool, error) {
+func CheckPasswordHash(password string, hash string) error {
 	chk, err := argon2id.ComparePasswordAndHash(password, hash)
-	if err != nil {
-		return false, err
+	if err != nil || !chk {
+		return fmt.Errorf("Incorrect password or bad hash. (%w).", err)
 	}
-	return chk, nil
+	return nil
 }
 
 func MakeJWT(userID uuid.UUID, tokenSecret string, expiresIn time.Duration) (string, error) {
@@ -107,4 +107,5 @@ func MakeRefreshToken(Nbytes int) string {
 	rand.Read(key)
 	// fmt.Printf(" %v,\n % x\n", key, key)
 	return hex.EncodeToString(key)
+
 }
