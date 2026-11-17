@@ -114,8 +114,6 @@ func (cfg *apiConfig) handleGetChirp(w http.ResponseWriter, req *http.Request) {
 
 	var chirp Chirp
 
-	// res, err := cfg.dbQueries.GetChirp(req.Context(), chirp_id)
-
 	id_str := req.PathValue("chirpID")
 
 	chirp_id, err := uuid.Parse(id_str)
@@ -127,7 +125,7 @@ func (cfg *apiConfig) handleGetChirp(w http.ResponseWriter, req *http.Request) {
 	c, err := cfg.dbQueries.GetChirp(req.Context(), chirp_id)
 	if err != nil {
 		fmt.Printf("Error occurred while retrieving chirp (%v): %v\n", chirp_id, err)
-		w.WriteHeader(404)
+		respondWithError(w, 404, "Chirp not found.")
 		return
 	}
 
@@ -164,4 +162,57 @@ func (cfg *apiConfig) handleValidateChirp(w http.ResponseWriter, req *http.Reque
 	}
 	respondWithCleanVersion(w, 200, params.Body)
 
+}
+
+func (cfg *apiConfig) handleDeleteChirp(w http.ResponseWriter, req *http.Request) {
+
+	jwToken, err := auth.GetBearerToken(req.Header)
+	if err != nil {
+		fmt.Printf("DeleteChirp: Unauthenticated user.\n %v", err)
+		respondWithError(w, 401, "Unauthenticated user.")
+		return
+	}
+
+	user_id, err := auth.ValidateJWT(jwToken, cfg.jwtSecret)
+	if err != nil {
+		fmt.Printf("User not found. (%v)\n", err)
+		respondWithError(w, 401, "User not found.")
+		return
+	}
+
+	chirp_id, err := uuid.Parse(req.PathValue("chirpID"))
+	if err != nil {
+		fmt.Printf("Error processing chirp UUID: %v\n", err)
+		respondWithError(w, 500, "Malformed chirp UUID.")
+		return
+	}
+	fmt.Printf("Delete chirp: %v\nwith user_id: %v\n", chirp_id, user_id)
+
+	chirp, err := cfg.dbQueries.GetChirp(req.Context(), chirp_id)
+	if err != nil {
+		fmt.Printf("Error occurred while retrieving chirp (%v): %v\n", chirp_id, err)
+		w.WriteHeader(404)
+		return
+	}
+	fmt.Printf("Found chirp: %+v\n", chirp)
+
+	if !(chirp.ID == chirp_id && chirp.UserID == user_id) {
+		respondWithError(w, 403, "User is not chirp author.")
+		return
+	}
+	fmt.Printf("User (%v) is chirp (%v) author.\n", chirp.ID, chirp.UserID)
+
+	chirp_params := database.DeleteChirpParams{
+		ID:     chirp_id,
+		UserID: user_id,
+	}
+
+	err = cfg.dbQueries.DeleteChirp(req.Context(), chirp_params)
+	if err != nil {
+		fmt.Printf("Chirp not found. (%v):\n   %v\n", chirp_id, err)
+		respondWithError(w, 404, "Chirp not found.")
+		return
+	}
+
+	respondWithJSON(w, 204, "Chirp deleted.")
 }

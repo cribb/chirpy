@@ -209,12 +209,12 @@ func (cfg *apiConfig) handleUpdateUser(w http.ResponseWriter, req *http.Request)
 	}
 	// fmt.Printf("UpdateUser: uuid: (%v)\n", uuid)
 
-	user, err := cfg.dbQueries.GetUserByUUID(req.Context(), uuid)
-	if err != nil {
-		fmt.Printf("UpdateUser: User not found. (%v)\n", err)
-		respondWithError(w, 500, "User not found.")
-		return
-	}
+	// user, err := cfg.dbQueries.GetUserByUUID(req.Context(), uuid)
+	// if err != nil {
+	// 	fmt.Printf("UpdateUser: User not found. (%v)\n", err)
+	// 	respondWithError(w, 500, "User not found.")
+	// 	return
+	// }
 
 	// fmt.Printf("UpdateUser: updating from old email: %v\n", user.Email)
 	// fmt.Printf("UpdateUser: updating  to  new email: %v\n", userNewParams.Email)
@@ -238,11 +238,11 @@ func (cfg *apiConfig) handleUpdateUser(w http.ResponseWriter, req *http.Request)
 		return
 	}
 
-	userchk, err := cfg.dbQueries.GetUserByEmail(req.Context(), userNewParams.Email)
-	if err != nil {
-		respondWithError(w, 401, "Error retrieving new email for user.")
-		return
-	}
+	// userchk, err := cfg.dbQueries.GetUserByEmail(req.Context(), userNewParams.Email)
+	// if err != nil {
+	// 	respondWithError(w, 401, "Error retrieving new email for user.")
+	// 	return
+	// }
 
 	// fmt.Printf("Updated user's email to: %v\n", p.Email)
 	// fmt.Printf("Updated user's email to: %v\n", userchk.Email)

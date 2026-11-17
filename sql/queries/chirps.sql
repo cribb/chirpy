@@ -34,3 +34,8 @@ INNER JOIN users
 WHERE users.id = $1
 LIMIT $2;
 
+-- name: DeleteChirp :exec
+DELETE FROM chirps
+WHERE chirps.id = $1
+AND user_id = $2;
+
