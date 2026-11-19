@@ -18,6 +18,7 @@ type User struct {
 	Email        string    `json:"email"`
 	Token        string    `json:"token"`
 	RefreshToken string    `json:"refresh_token"`
+	IsChirpyRed  bool      `json:"is_chirpy_red"`
 }
 
 func (cfg *apiConfig) handleAddUser(w http.ResponseWriter, req *http.Request) {
@@ -54,10 +55,11 @@ func (cfg *apiConfig) handleAddUser(w http.ResponseWriter, req *http.Request) {
 
 	// fmt.Printf("user: %v\n", user)
 	newUser := User{
-		ID:        user.ID,
-		CreatedAt: user.CreatedAt,
-		UpdatedAt: user.UpdatedAt,
-		Email:     user.Email,
+		ID:          user.ID,
+		CreatedAt:   user.CreatedAt,
+		UpdatedAt:   user.UpdatedAt,
+		Email:       user.Email,
+		IsChirpyRed: user.IsChirpyRed,
 	}
 
 	respondWithJSON(w, 201, newUser)
@@ -122,6 +124,7 @@ func (cfg *apiConfig) handleUserLogin(w http.ResponseWriter, req *http.Request) 
 		CreatedAt:    user.CreatedAt,
 		UpdatedAt:    user.UpdatedAt,
 		Email:        user.Email,
+		IsChirpyRed:  user.IsChirpyRed,
 		Token:        jwtToken,
 		RefreshToken: r_tok,
 	}
@@ -252,4 +255,61 @@ func (cfg *apiConfig) handleUpdateUser(w http.ResponseWriter, req *http.Request)
 	}
 
 	respondWithJSON(w, 200, userResponse{Email: userNewParams.Email})
+}
+
+func (cfg *apiConfig) handleWebhooks(w http.ResponseWriter, req *http.Request) {
+	type hookdata struct {
+		UserID uuid.UUID `json:"user_id"`
+	}
+
+	type parameters struct {
+		Event string   `json:"event"`
+		Data  hookdata `json:"data"`
+	}
+
+	decoder := json.NewDecoder(req.Body)
+	params := parameters{}
+	err := decoder.Decode(&params)
+	if err != nil {
+		respondWithError(w, 500, fmt.Sprintf("Error decoding JSON: %s", err))
+		return
+	}
+
+	fmt.Printf("params: %+v\n", params)
+
+	if params.Event != "user.upgraded" {
+		// fmt.Printf("Wrong kind of user event.\n")
+		respondWithNoContent(w)
+		return
+	}
+
+	user, err := cfg.dbQueries.GetUserByUUID(req.Context(), params.Data.UserID)
+	if err != nil {
+		fmt.Printf("Error: User not found. (%v)\n", err)
+		respondWithError(w, 404, "User not found.")
+		return
+	}
+
+	redStateParams := database.SetUserRedStateParams{
+		ID:          user.ID,
+		IsChirpyRed: true,
+	}
+
+	err = cfg.dbQueries.SetUserRedState(req.Context(), redStateParams)
+	if err != nil {
+		respondWithError(w, 500, "Error setting user's RedState.")
+		return
+	}
+	// redState, err := cfg.dbQueries.GetUserRedState(req.Context(), user.ID)
+	// if err != nil {
+	// 	respondWithError(w, 500, "Error getting user's RedState.")
+	// 	return
+	// }
+
+	// userResponse := User{
+	// 	IsChirpyRed: redState,
+	// }
+
+	fmt.Printf("User redStatus: %v\n", redStateParams.IsChirpyRed)
+	respondWithJSON(w, 204, redStateParams)
 }

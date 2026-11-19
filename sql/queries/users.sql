@@ -27,6 +27,15 @@ UPDATE users
 SET email = $2, hashed_password = $3
 WHERE users.id = $1;
 
+-- name: SetUserRedState :exec
+UPDATE users
+SET is_chirpy_red = $2
+WHERE users.id = $1;
+
+-- name: GetUserRedState :one
+SELECT users.is_chirpy_red
+FROM users
+WHERE users.id = $1;
 
 -- name: ResetUsers :exec
 TRUNCATE users CASCADE;

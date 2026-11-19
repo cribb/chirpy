@@ -7,6 +7,11 @@ import (
 	"strings"
 )
 
+// status only, no body
+func respondWithNoContent(w http.ResponseWriter) {
+	w.WriteHeader(204) // http.StatusNoContent
+}
+
 func respondWithOK(w http.ResponseWriter) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(http.StatusOK)

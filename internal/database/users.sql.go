@@ -20,7 +20,7 @@ VALUES (
     $1,
     $2
 )
-RETURNING id, created_at, updated_at, email, hashed_password
+RETURNING id, created_at, updated_at, email, hashed_password, is_chirpy_red
 `
 
 type CreateUserParams struct {
@@ -37,12 +37,13 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.UpdatedAt,
 		&i.Email,
 		&i.HashedPassword,
+		&i.IsChirpyRed,
 	)
 	return i, err
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT users.id, users.created_at, users.updated_at, users.email, users.hashed_password
+SELECT users.id, users.created_at, users.updated_at, users.email, users.hashed_password, users.is_chirpy_red
 FROM users 
 WHERE users.email = $1
 LIMIT 1
@@ -57,12 +58,13 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.UpdatedAt,
 		&i.Email,
 		&i.HashedPassword,
+		&i.IsChirpyRed,
 	)
 	return i, err
 }
 
 const getUserByUUID = `-- name: GetUserByUUID :one
-SELECT users.id, users.created_at, users.updated_at, users.email, users.hashed_password
+SELECT users.id, users.created_at, users.updated_at, users.email, users.hashed_password, users.is_chirpy_red
 FROM users 
 WHERE users.id = $1
 LIMIT 1
@@ -77,8 +79,22 @@ func (q *Queries) GetUserByUUID(ctx context.Context, id uuid.UUID) (User, error)
 		&i.UpdatedAt,
 		&i.Email,
 		&i.HashedPassword,
+		&i.IsChirpyRed,
 	)
 	return i, err
+}
+
+const getUserRedState = `-- name: GetUserRedState :one
+SELECT users.is_chirpy_red
+FROM users
+WHERE users.id = $1
+`
+
+func (q *Queries) GetUserRedState(ctx context.Context, id uuid.UUID) (bool, error) {
+	row := q.db.QueryRowContext(ctx, getUserRedState, id)
+	var is_chirpy_red bool
+	err := row.Scan(&is_chirpy_red)
+	return is_chirpy_red, err
 }
 
 const resetUsers = `-- name: ResetUsers :exec
@@ -87,6 +103,22 @@ TRUNCATE users CASCADE
 
 func (q *Queries) ResetUsers(ctx context.Context) error {
 	_, err := q.db.ExecContext(ctx, resetUsers)
+	return err
+}
+
+const setUserRedState = `-- name: SetUserRedState :exec
+UPDATE users
+SET is_chirpy_red = $2
+WHERE users.id = $1
+`
+
+type SetUserRedStateParams struct {
+	ID          uuid.UUID
+	IsChirpyRed bool
+}
+
+func (q *Queries) SetUserRedState(ctx context.Context, arg SetUserRedStateParams) error {
+	_, err := q.db.ExecContext(ctx, setUserRedState, arg.ID, arg.IsChirpyRed)
 	return err
 }
 
