@@ -45,3 +45,10 @@ kill %1        # literal example
 #### generate new token (bash)
 
     openssl rand -base64 64
+
+## Env file
+
+DB_URL="postgres://postgres:postgres@localhost:5432/chirpy?sslmode=disable"
+PLATFORM="dev"
+JWTSECRET
+POLKA_KEY

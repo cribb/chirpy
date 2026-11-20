@@ -19,6 +19,7 @@ type apiConfig struct {
 	dbURL          string
 	dbQueries      *database.Queries
 	jwtSecret      string
+	polkaKey       string
 }
 
 func main() {
@@ -33,6 +34,7 @@ func main() {
 	apicfg.dbURL = os.Getenv("DB_URL")
 	apicfg.platform = os.Getenv("PLATFORM")
 	apicfg.jwtSecret = os.Getenv("JWTSECRET")
+	apicfg.polkaKey = os.Getenv("POLKA_KEY")
 
 	fmt.Printf("platform: %v\n", apicfg.platform)
 	fmt.Printf("Database URL: %v\n", apicfg.dbURL)

@@ -275,6 +275,12 @@ func (cfg *apiConfig) handleWebhooks(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	apiKey, err := auth.GetAPIKey(req.Header)
+	if err != nil || apiKey != cfg.polkaKey {
+		respondWithError(w, 401, "Incorrect or non-existant API key.")
+		return
+	}
+
 	fmt.Printf("params: %+v\n", params)
 
 	if params.Event != "user.upgraded" {
