@@ -29,10 +29,8 @@ LIMIT 1;
 -- name: GetChirpsForUser :many
 SELECT chirps.*
 FROM chirps
-INNER JOIN users
-  ON chirps.user_id = users.id
-WHERE users.id = $1
-LIMIT $2;
+WHERE chirps.user_id = $1
+ORDER BY created_at;
 
 -- name: DeleteChirp :exec
 DELETE FROM chirps

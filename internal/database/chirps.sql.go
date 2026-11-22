@@ -117,19 +117,12 @@ func (q *Queries) GetChirp(ctx context.Context, id uuid.UUID) (Chirp, error) {
 const getChirpsForUser = `-- name: GetChirpsForUser :many
 SELECT chirps.id, chirps.created_at, chirps.updated_at, chirps.user_id, chirps.body
 FROM chirps
-INNER JOIN users
-  ON chirps.user_id = users.id
-WHERE users.id = $1
-LIMIT $2
+WHERE chirps.user_id = $1
+ORDER BY created_at
 `
 
-type GetChirpsForUserParams struct {
-	ID    uuid.UUID
-	Limit int32
-}
-
-func (q *Queries) GetChirpsForUser(ctx context.Context, arg GetChirpsForUserParams) ([]Chirp, error) {
-	rows, err := q.db.QueryContext(ctx, getChirpsForUser, arg.ID, arg.Limit)
+func (q *Queries) GetChirpsForUser(ctx context.Context, userID uuid.UUID) ([]Chirp, error) {
+	rows, err := q.db.QueryContext(ctx, getChirpsForUser, userID)
 	if err != nil {
 		return nil, err
 	}

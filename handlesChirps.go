@@ -92,6 +92,51 @@ func (cfg *apiConfig) handleGetAllChirps(w http.ResponseWriter, req *http.Reques
 		return
 	}
 
+	for _, c := range res {
+		chirps = append(chirps,
+			Chirp{
+				ID:        c.ID,
+				UserID:    c.UserID,
+				CreatedAt: c.CreatedAt,
+				UpdatedAt: c.UpdatedAt,
+				Body:      c.Body,
+			},
+		)
+		// fmt.Printf("Appending entry: %v\n", i)
+
+	}
+
+	respondWithJSON(w, 200, chirps)
+
+}
+
+func (cfg *apiConfig) handleGetChirps(w http.ResponseWriter, req *http.Request) {
+
+	var chirps []Chirp
+
+	userUuidString := req.URL.Query().Get("author_id")
+	fmt.Printf("userUUIDstring: %+v\n", userUuidString)
+	if len(userUuidString) == 0 {
+		cfg.handleGetAllChirps(w, req)
+		return
+	}
+	userUUID, err := uuid.Parse(userUuidString)
+	if err != nil {
+		respondWithError(w, 400, "Bad UUID.")
+	}
+	fmt.Printf("userUUID: %+v\n", userUUID)
+
+	// UsersChirpParams := database.GetChirpsForUserParams{
+	// 	ID:    userUUID,
+	// 	Limit: 1000,
+	// }
+
+	res, err := cfg.dbQueries.GetChirpsForUser(req.Context(), userUUID)
+	if err != nil {
+		fmt.Printf("Error occurred while retrieving chirps: %v\n", err)
+		return
+	}
+
 	for i, c := range res {
 		chirps = append(chirps,
 			Chirp{
