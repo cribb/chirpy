@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"slices"
 	"time"
 
 	"github.com/cribb/chirpy/internal/auth"
@@ -82,59 +83,68 @@ func (cfg *apiConfig) handlePostChirp(w http.ResponseWriter, req *http.Request) 
 
 }
 
-func (cfg *apiConfig) handleGetAllChirps(w http.ResponseWriter, req *http.Request) {
+// func (cfg *apiConfig) handleGetAllChirps(w http.ResponseWriter, req *http.Request) {
 
-	var chirps []Chirp
+// 	var chirps []Chirp
 
-	res, err := cfg.dbQueries.GetAllChirps(req.Context())
-	if err != nil {
-		fmt.Printf("Error occurred while retrieving chirps: %v\n", err)
-		return
-	}
+// 	res, err := cfg.dbQueries.GetAllChirps(req.Context())
+// 	if err != nil {
+// 		fmt.Printf("Error occurred while retrieving chirps: %v\n", err)
+// 		return
+// 	}
 
-	for _, c := range res {
-		chirps = append(chirps,
-			Chirp{
-				ID:        c.ID,
-				UserID:    c.UserID,
-				CreatedAt: c.CreatedAt,
-				UpdatedAt: c.UpdatedAt,
-				Body:      c.Body,
-			},
-		)
-		// fmt.Printf("Appending entry: %v\n", i)
+// 	for _, c := range res {
+// 		chirps = append(chirps,
+// 			Chirp{
+// 				ID:        c.ID,
+// 				UserID:    c.UserID,
+// 				CreatedAt: c.CreatedAt,
+// 				UpdatedAt: c.UpdatedAt,
+// 				Body:      c.Body,
+// 			},
+// 		)
+// 		// fmt.Printf("Appending entry: %v\n", i)
 
-	}
+// 	}
 
-	respondWithJSON(w, 200, chirps)
+// 	respondWithJSON(w, 200, chirps)
 
-}
+// }
 
 func (cfg *apiConfig) handleGetChirps(w http.ResponseWriter, req *http.Request) {
 
-	var chirps []Chirp
+	sortAscending := true
+	res := []database.Chirp{}
+	chirps := []Chirp{}
+	var err error
 
 	userUuidString := req.URL.Query().Get("author_id")
 	fmt.Printf("userUUIDstring: %+v\n", userUuidString)
+	desiredOrder := req.URL.Query().Get("sort")
+	fmt.Printf("desiredOrder: %+v\n", desiredOrder)
+
+	if desiredOrder == "desc" {
+		sortAscending = false
+	}
+
 	if len(userUuidString) == 0 {
-		cfg.handleGetAllChirps(w, req)
-		return
-	}
-	userUUID, err := uuid.Parse(userUuidString)
-	if err != nil {
-		respondWithError(w, 400, "Bad UUID.")
-	}
-	fmt.Printf("userUUID: %+v\n", userUUID)
+		res, err = cfg.dbQueries.GetAllChirps(req.Context())
+		if err != nil {
+			fmt.Printf("Error occurred while retrieving chirps: %v\n", err)
+			return
+		}
+	} else {
+		userUUID, err := uuid.Parse(userUuidString)
+		if err != nil {
+			respondWithError(w, 400, "Bad UUID.")
+		}
+		fmt.Printf("userUUID: %+v\n", userUUID)
 
-	// UsersChirpParams := database.GetChirpsForUserParams{
-	// 	ID:    userUUID,
-	// 	Limit: 1000,
-	// }
-
-	res, err := cfg.dbQueries.GetChirpsForUser(req.Context(), userUUID)
-	if err != nil {
-		fmt.Printf("Error occurred while retrieving chirps: %v\n", err)
-		return
+		res, err = cfg.dbQueries.GetChirpsForUser(req.Context(), userUUID)
+		if err != nil {
+			fmt.Printf("Error occurred while retrieving chirps: %v\n", err)
+			return
+		}
 	}
 
 	for i, c := range res {
@@ -149,6 +159,10 @@ func (cfg *apiConfig) handleGetChirps(w http.ResponseWriter, req *http.Request) 
 		)
 		fmt.Printf("Appending entry: %v\n", i)
 
+	}
+
+	if !sortAscending {
+		slices.Reverse(chirps)
 	}
 
 	respondWithJSON(w, 200, chirps)
